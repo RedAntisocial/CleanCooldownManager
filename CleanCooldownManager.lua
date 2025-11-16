@@ -10,6 +10,8 @@ local addon = CreateFrame("Frame")
 addon:RegisterEvent("ADDON_LOADED")
 addon:RegisterEvent("PLAYER_ENTERING_WORLD")
 
+local pendingUpdate = false
+
 local function RemovePadding(viewer)
     -- Don't apply modifications in edit mode
     if EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive() then
@@ -123,14 +125,27 @@ local function RemovePadding(viewer)
     if isHorizontal then
         -- Horizontal layout with wrapping
         for i, child in ipairs(visibleChildren) do
-            local col = (i - 1) % stride
-            local row = math.floor((i - 1) / stride)
-            
-            local xOffset = startX + col * (buttonWidth + overlap)
-            local yOffset = startY - row * (buttonHeight + overlap)
-            
-            child:ClearAllPoints()
-            child:SetPoint("CENTER", viewer, "CENTER", xOffset + buttonWidth/2, yOffset - buttonHeight/2)
+            local index = i - 1
+			local row = math.floor(index / stride)
+			local col = index % stride
+
+			-- Determine number of icons in this row
+			local rowStart = row * stride + 1
+			local rowEnd = math.min(rowStart + stride - 1, numIcons)
+			local iconsInRow = rowEnd - rowStart + 1
+
+			-- Compute the actual width of this row
+			local rowWidth = iconsInRow * buttonWidth + (iconsInRow - 1) * overlap
+
+			-- Center this row
+			local rowStartX = -rowWidth / 2
+
+			-- Column offset inside centered row
+			local xOffset = rowStartX + col * (buttonWidth + overlap)
+			local yOffset = startY - row * (buttonHeight + overlap)
+
+			child:ClearAllPoints()
+			child:SetPoint("CENTER", viewer, "CENTER", xOffset + buttonWidth/2, yOffset - buttonHeight/2)
         end
     else
         -- Vertical layout with wrapping
@@ -147,10 +162,23 @@ local function RemovePadding(viewer)
     end
 end
 
+local function ScheduleUpdate(viewer)
+    if pendingUpdate then return end
+    pendingUpdate = true
+
+    C_Timer.After(0, function()
+        pendingUpdate = false
+        RemovePadding(viewer)
+    end)
+end
+
 local function ApplyModifications()
     local viewers = {
+---@diagnostic disable-next-line: undefined-field
         _G.UtilityCooldownViewer,
+---@diagnostic disable-next-line: undefined-field
         _G.EssentialCooldownViewer,
+---@diagnostic disable-next-line: undefined-field
         _G.BuffCoolDownViewer
     }
     
@@ -161,9 +189,7 @@ local function ApplyModifications()
             -- Hook Layout to reapply when Blizzard updates
             if viewer.Layout then
                 hooksecurefunc(viewer, "Layout", function()
-                    C_Timer.After(0, function()
-                        RemovePadding(viewer)
-                    end)
+                    ScheduleUpdate(viewer)
                 end)
             end
             
@@ -171,14 +197,10 @@ local function ApplyModifications()
             local children = {viewer:GetChildren()}
             for _, child in ipairs(children) do
                 child:HookScript("OnShow", function()
-                    C_Timer.After(0, function()
-                        RemovePadding(viewer)
-                    end)
+                    ScheduleUpdate(viewer)
                 end)
                 child:HookScript("OnHide", function()
-                    C_Timer.After(0, function()
-                        RemovePadding(viewer)
-                    end)
+                    ScheduleUpdate(viewer)
                 end)
             end
         end
@@ -203,7 +225,7 @@ addon:SetScript("OnEvent", function(self, event, arg)
     elseif event == "ADDON_LOADED" and arg == "Blizzard_CooldownManager" then
         C_Timer.After(0.5, ApplyModifications)
     elseif event == "PLAYER_ENTERING_WORLD" then
-        C_Timer.After(2, ApplyModifications)
+        C_Timer.After(0.5, ApplyModifications)
     end
 end)
 
