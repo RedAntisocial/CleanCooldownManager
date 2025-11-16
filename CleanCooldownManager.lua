@@ -4,7 +4,7 @@ addon:RegisterEvent("ADDON_LOADED")
 addon:RegisterEvent("PLAYER_ENTERING_WORLD")
 
 local function RemovePadding(viewer)
-    -- Turn off the modification triggers in Edit Mode
+    -- Don't apply modifications in edit mode
     if EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive() then
         return
     end
@@ -15,7 +15,7 @@ local function RemovePadding(viewer)
     local visibleChildren = {}
     for _, child in ipairs(children) do
         if child:IsShown() then
-            -- Store original position so we don't make a mess of things
+            -- Store original position for sorting
             local point, relativeTo, relativePoint, x, y = child:GetPoint(1)
             child.originalX = x or 0
             child.originalY = y or 0
@@ -47,7 +47,7 @@ local function RemovePadding(viewer)
     
     -- Get layout settings from the viewer
     local stride = viewer.stride or #visibleChildren
-    local overlap = -3 -- Adjust this value to control icon spacing (more negative = tighter)
+    local overlap = -2 -- Adjust this value to control icon spacing (more negative = tighter)
     
     -- Scale the icons to overlap and hide the transparent borders baked into the textures
     for _, child in ipairs(visibleChildren) do
@@ -62,17 +62,37 @@ local function RemovePadding(viewer)
     local buttonWidth = visibleChildren[1]:GetWidth()
     local buttonHeight = visibleChildren[1]:GetHeight()
     
+    -- Calculate grid dimensions
+    local numIcons = #visibleChildren
+    local totalWidth, totalHeight
+    
+    if isHorizontal then
+        local cols = math.min(stride, numIcons)
+        local rows = math.ceil(numIcons / stride)
+        totalWidth = cols * buttonWidth + (cols - 1) * overlap
+        totalHeight = rows * buttonHeight + (rows - 1) * overlap
+    else
+        local rows = math.min(stride, numIcons)
+        local cols = math.ceil(numIcons / stride)
+        totalWidth = cols * buttonWidth + (cols - 1) * overlap
+        totalHeight = rows * buttonHeight + (rows - 1) * overlap
+    end
+    
+    -- Calculate offsets to center the grid
+    local startX = -totalWidth / 2
+    local startY = viewer:GetHeight() / 2 -- totalHeight / 2 --uncomment this to center the icon grid vertically
+    
     if isHorizontal then
         -- Horizontal layout with wrapping
         for i, child in ipairs(visibleChildren) do
             local col = (i - 1) % stride
             local row = math.floor((i - 1) / stride)
             
-            local xOffset = col * (buttonWidth + overlap)
-            local yOffset = -row * (buttonHeight + overlap)
+            local xOffset = startX + col * (buttonWidth + overlap)
+            local yOffset = startY - row * (buttonHeight + overlap)
             
             child:ClearAllPoints()
-            child:SetPoint("TOPLEFT", viewer, "TOPLEFT", xOffset, yOffset)
+            child:SetPoint("CENTER", viewer, "CENTER", xOffset + buttonWidth/2, yOffset - buttonHeight/2)
         end
     else
         -- Vertical layout with wrapping
@@ -80,11 +100,11 @@ local function RemovePadding(viewer)
             local row = (i - 1) % stride
             local col = math.floor((i - 1) / stride)
             
-            local xOffset = col * (buttonWidth + overlap)
-            local yOffset = -row * (buttonHeight + overlap)
+            local xOffset = startX + col * (buttonWidth + overlap)
+            local yOffset = startY - row * (buttonHeight + overlap)
             
             child:ClearAllPoints()
-            child:SetPoint("TOPLEFT", viewer, "TOPLEFT", xOffset, yOffset)
+            child:SetPoint("CENTER", viewer, "CENTER", xOffset + buttonWidth/2, yOffset - buttonHeight/2)
         end
     end
 end
