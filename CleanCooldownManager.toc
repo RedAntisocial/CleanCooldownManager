@@ -7,4 +7,5 @@
 ## X-Curse-Project-ID: 
 ## X-WoWI-ID: 
 ## X-Wago-ID: 
+## SavedVariables: CleanCooldownManagerDB
 CleanCooldownManager.lua
