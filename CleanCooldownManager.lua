@@ -1,94 +1,112 @@
 -- CleanCooldownManager.lua
--- Local variables
-
 local addon = CreateFrame("Frame")
 
-
--- Register Events
 addon:RegisterEvent("ADDON_LOADED")
 addon:RegisterEvent("PLAYER_ENTERING_WORLD")
 
--- Strips the borders and edges off the buttons. Doesn't strip anything inappropriate
-local function CleanButtons(button)
-    if button.Border then button.Border:Hide() end
-    if button.NormalTexture then button.NormalTexture:SetTexture(nil) end
-    if button.PushedTexture then button.PushedTexture:SetTexture(nil) end
-    if button.HighlightTexture then button.HighlightTexture:SetTexture(nil) end
-    if button.IconMask then button.IconMask:Hide() end
-end
-
--- Strips the borders from the containers
-local function RemoveBorders(container)
-    if container.EnumerateFrames then
-        for _, child in container:EnumerateFrames() do
-            CleanButtons(child)
-        end
+local function RemovePadding(viewer)
+    -- If we don't do this bit right here, it breaks your ability to move the Cooldown Manager stuff in edit mode
+    if EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive() then
+        return
     end
-
-    hooksecurefunc(container, "AddFrame", function(self, frame)
-        CleanButtons(frame)
-    end)
-end
-
--- Does what it says on the tin. And the original driver for this addon.
-local function ApplyZeroPadding(container)
-    if container.SetSpacing then
-        container:SetSpacing(0)
-    end
-
-    hooksecurefunc(container, "SetSpacing", function(self, spacing)
-        if spacing ~= 0 then
-            rawset(self, "spacing", 0)
-        end
-    end)
-end
-
--- Centered growth for the bar layout. Also, the most likely part of the addon to break.
-local function CenterGrowLayout(self)
-    local children = self:GetLayoutChildren()
-    local count = #children
-    if count == 0 then return end
-
-    local totalWidth = 0
-    for i, child in ipairs(children) do
-        totalWidth = totalWidth + child:GetWidth()
-    end
-
-    local spacing = 0
-    totalWidth = totalWidth + (count - 1) * spacing
-
-    local startX = -totalWidth / 2
-
-    local x = startX
+    
+    local children = {viewer:GetChildren()}
+    
+    -- Get the visible icons (because they're fully dynamic)
+    local visibleChildren = {}
     for _, child in ipairs(children) do
-        child:ClearAllPoints()
-        child:SetPoint("CENTER", self, "CENTER", x + child:GetWidth()/2, 0)
-        x = x + child:GetWidth() + spacing
+        if child:IsShown() then
+            table.insert(visibleChildren, child)
+        end
     end
-end
-
--- Blizzard likes to refresh the layout on load or once you open edit mode.
-local function OverrideCenteredGrowLayout(container)
-    container.LayoutChildren = CenterGrowLayout
-    container:MarkDirty()
+    
+    if #visibleChildren == 0 then return end
+    
+    -- Scale the icons to overlap and hide borders.
+    --[[ Small rant at the ridiculousness of this. 
+    Spent hours digging through /framestack trying to figure out what element was controlling the padding that blizzard only lets you set to 2.
+    It turns out there is _no_ actual padding in place, the icons themselves have a 1px transparent edge, which is why they won't let you set
+    the padding below 2.
+    ]]
+    for _, child in ipairs(visibleChildren) do
+        if child.Icon then
+            child.Icon:ClearAllPoints()
+            child.Icon:SetPoint("CENTER", child, "CENTER", 0, 0)
+            child.Icon:SetSize(child:GetWidth() * 1.15, child:GetHeight() * 1.15)
+        end
+    end
+    
+    -- Reposition buttons with overlap
+    local xOffset = 0
+    local overlap = -3
+    
+    for i, child in ipairs(visibleChildren) do
+        child:ClearAllPoints()
+        child:SetPoint("LEFT", viewer, "LEFT", xOffset, 0)
+        xOffset = xOffset + child:GetWidth() + overlap
+    end
 end
 
 local function ApplyModifications()
-    if not CooldownManager or not CooldownManager.Container then
-        return
+    print("Applying modifications")
+    
+    local viewers = {
+        _G.UtilityCooldownViewer,
+        _G.EssentialCooldownViewer,
+        _G.BuffCoolDownViewer
+    }
+    
+    for _, viewer in ipairs(viewers) do
+        if viewer then
+            print("Processing:", viewer:GetName())
+            
+            RemovePadding(viewer)
+            
+            -- Hook Layout to reapply
+            if viewer.Layout then
+                hooksecurefunc(viewer, "Layout", function()
+                    C_Timer.After(0, function()
+                        RemovePadding(viewer)
+                    end)
+                end)
+            end
+            
+            -- Hook Show/Hide
+            local children = {viewer:GetChildren()}
+            for _, child in ipairs(children) do
+                child:HookScript("OnShow", function()
+                    C_Timer.After(0, function()
+                        RemovePadding(viewer)
+                    end)
+                end)
+                child:HookScript("OnHide", function()
+                    C_Timer.After(0, function()
+                        RemovePadding(viewer)
+                    end)
+                end)
+            end
+        end
     end
-
-    local container = CooldownManager.Container
-
-    ApplyZeroPadding(container)
-    RemoveBorders(container)
-    OverrideCenteredGrowLayout(container)
+    
+    -- Listen for edit mode changes
+    if EditModeManagerFrame then
+        EditModeManagerFrame:HookScript("OnEditModeEnter", function()
+            print("Edit mode entered - modifications disabled")
+        end)
+        
+        EditModeManagerFrame:HookScript("OnEditModeExit", function()
+            print("Edit mode exited - reapplying modifications")
+            C_Timer.After(0.1, ApplyModifications)
+        end)
+    end
+    
+    print("Done")
 end
 
 addon:SetScript("OnEvent", function(self, event, arg)
     if event == "ADDON_LOADED" and arg == "Blizzard_CooldownManager" then
-        ApplyModifications()
+        C_Timer.After(0.5, ApplyModifications)
     elseif event == "PLAYER_ENTERING_WORLD" then
-        C_Timer.After(1, ApplyModifications)
+        C_Timer.After(2, ApplyModifications)
     end
 end)
