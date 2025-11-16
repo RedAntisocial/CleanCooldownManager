@@ -11,7 +11,7 @@ addon:RegisterEvent("ADDON_LOADED")
 addon:RegisterEvent("PLAYER_ENTERING_WORLD")
 
 local viewerPending = {}
-
+local updateBucket = {}
 
 -- Core function to remove padding and apply modifications. Doing Blizzard's work for them.
 local function RemovePadding(viewer)
@@ -164,15 +164,22 @@ local function RemovePadding(viewer)
     end
 end
 
+local updaterFrame = CreateFrame("Frame")
+updaterFrame:Hide()
+
+updaterFrame:SetScript("OnUpdate", function()
+    updaterFrame:Hide()
+
+    for viewer in pairs(updateBucket) do
+        updateBucket[viewer] = nil
+        RemovePadding(viewer)
+    end
+end)
+
 -- Schedule an update to apply the modifications during the same frame, but after Blizzard is done mucking with things
 local function ScheduleUpdate(viewer)
-    if viewerPending[viewer] then return end
-    viewerPending[viewer] = true
-
-    C_Timer.After(0, function()
-        viewerPending[viewer] = nil
-        RemovePadding(viewer)
-    end)
+    updateBucket[viewer] = true
+    updaterFrame:Show()
 end
 
 -- Do the work
