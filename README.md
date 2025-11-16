@@ -28,13 +28,13 @@ No configuration is required for the visual cleanup. Once the addon is enabled t
   Displays brief usage help for the addon in chat.
 
 - `/ccm rant`  
- Get my thoughts on the necessity for this addon
+ Get my thoughts on the necessity for this addon.
 
 - `/ccm borders`  
- Toggle the black borders ON or OFF
+ Toggle the black borders ON or OFF.
 
 - `/ccm reload`  
- Reapply the clean modofications
+ Reapply the clean modofications.
 
 ## Files
 
