@@ -1,11 +1,10 @@
 -- CleanCooldownManager.lua
 local addon = CreateFrame("Frame")
-
 addon:RegisterEvent("ADDON_LOADED")
 addon:RegisterEvent("PLAYER_ENTERING_WORLD")
 
 local function RemovePadding(viewer)
-    -- If we don't do this bit right here, it breaks your ability to move the Cooldown Manager stuff in edit mode
+    -- Turn off the modification triggers in Edit Mode
     if EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive() then
         return
     end
@@ -16,18 +15,41 @@ local function RemovePadding(viewer)
     local visibleChildren = {}
     for _, child in ipairs(children) do
         if child:IsShown() then
+            -- Store original position so we don't make a mess of things
+            local point, relativeTo, relativePoint, x, y = child:GetPoint(1)
+            child.originalX = x or 0
+            child.originalY = y or 0
             table.insert(visibleChildren, child)
         end
     end
     
     if #visibleChildren == 0 then return end
     
-    -- Scale the icons to overlap and hide borders.
-    --[[ Small rant at the ridiculousness of this. 
-    Spent hours digging through /framestack trying to figure out what element was controlling the padding that blizzard only lets you set to 2.
-    It turns out there is _no_ actual padding in place, the icons themselves have a 1px transparent edge, which is why they won't let you set
-    the padding below 2.
-    ]]
+    -- Sort by original position to maintain Blizzard's order
+    local isHorizontal = viewer.isHorizontal
+    if isHorizontal then
+        -- Sort left to right, then top to bottom
+        table.sort(visibleChildren, function(a, b)
+            if math.abs(a.originalY - b.originalY) < 1 then
+                return a.originalX < b.originalX
+            end
+            return a.originalY > b.originalY
+        end)
+    else
+        -- Sort top to bottom, then left to right
+        table.sort(visibleChildren, function(a, b)
+            if math.abs(a.originalX - b.originalX) < 1 then
+                return a.originalY > b.originalY
+            end
+            return a.originalX < b.originalX
+        end)
+    end
+    
+    -- Get layout settings from the viewer
+    local stride = viewer.stride or #visibleChildren
+    local overlap = -3 -- Adjust this value to control icon spacing (more negative = tighter)
+    
+    -- Scale the icons to overlap and hide the transparent borders baked into the textures
     for _, child in ipairs(visibleChildren) do
         if child.Icon then
             child.Icon:ClearAllPoints()
@@ -36,20 +58,38 @@ local function RemovePadding(viewer)
         end
     end
     
-    -- Reposition buttons with overlap
-    local xOffset = 0
-    local overlap = -3 -- This is the value you adjust for the overlap.
+    -- Reposition buttons respecting orientation and stride
+    local buttonWidth = visibleChildren[1]:GetWidth()
+    local buttonHeight = visibleChildren[1]:GetHeight()
     
-    for i, child in ipairs(visibleChildren) do
-        child:ClearAllPoints()
-        child:SetPoint("LEFT", viewer, "LEFT", xOffset, 0)
-        xOffset = xOffset + child:GetWidth() + overlap
+    if isHorizontal then
+        -- Horizontal layout with wrapping
+        for i, child in ipairs(visibleChildren) do
+            local col = (i - 1) % stride
+            local row = math.floor((i - 1) / stride)
+            
+            local xOffset = col * (buttonWidth + overlap)
+            local yOffset = -row * (buttonHeight + overlap)
+            
+            child:ClearAllPoints()
+            child:SetPoint("TOPLEFT", viewer, "TOPLEFT", xOffset, yOffset)
+        end
+    else
+        -- Vertical layout with wrapping
+        for i, child in ipairs(visibleChildren) do
+            local row = (i - 1) % stride
+            local col = math.floor((i - 1) / stride)
+            
+            local xOffset = col * (buttonWidth + overlap)
+            local yOffset = -row * (buttonHeight + overlap)
+            
+            child:ClearAllPoints()
+            child:SetPoint("TOPLEFT", viewer, "TOPLEFT", xOffset, yOffset)
+        end
     end
 end
 
 local function ApplyModifications()
-    print("Applying modifications")
-    
     local viewers = {
         _G.UtilityCooldownViewer,
         _G.EssentialCooldownViewer,
@@ -58,11 +98,9 @@ local function ApplyModifications()
     
     for _, viewer in ipairs(viewers) do
         if viewer then
-            print("Processing:", viewer:GetName())
-            
             RemovePadding(viewer)
             
-            -- Hook Layout to reapply
+            -- Hook Layout to reapply when Blizzard updates
             if viewer.Layout then
                 hooksecurefunc(viewer, "Layout", function()
                     C_Timer.After(0, function()
@@ -71,7 +109,7 @@ local function ApplyModifications()
                 end)
             end
             
-            -- Hook Show/Hide
+            -- Hook Show/Hide to reapply when icons appear/disappear
             local children = {viewer:GetChildren()}
             for _, child in ipairs(children) do
                 child:HookScript("OnShow", function()
@@ -87,20 +125,6 @@ local function ApplyModifications()
             end
         end
     end
-    
-    -- Listen for edit mode changes
-    if EditModeManagerFrame then
-        EditModeManagerFrame:HookScript("OnEditModeEnter", function()
-            print("Edit mode entered - modifications disabled")
-        end)
-        
-        EditModeManagerFrame:HookScript("OnEditModeExit", function()
-            print("Edit mode exited - reapplying modifications")
-            C_Timer.After(0.1, ApplyModifications)
-        end)
-    end
-    
-    print("Done")
 end
 
 addon:SetScript("OnEvent", function(self, event, arg)
@@ -110,3 +134,25 @@ addon:SetScript("OnEvent", function(self, event, arg)
         C_Timer.After(2, ApplyModifications)
     end
 end)
+
+-- Slash command
+SLASH_CLEANCOOLDOWN1 = "/cleancooldownmanager"
+SLASH_CLEANCOOLDOWN2 = "/ccm"
+SlashCmdList["CLEANCOOLDOWN"] = function(msg)
+    if msg == "rant" then
+        print("I spent HOURS digging through the UI trying to identify the element controlling the padding... There isn't one...")
+		print("The padding is a LIE! The padding is a LIE! The padding is a LIE! The padding is a LIE! The padding is a LIE! The padding is a LIE!")
+		print("BIG ICONS ARE LYING TO YOU!!!!")
+		print("The icons themselves have a 1px transparent edge. There IS NO PADDING!!!") 
+		print("YOUR ICONS SIT ON A THRONE OF LIES!!!")
+		print("But I fixed it anyway.")
+		print(" - Peri")
+    elseif msg == "reload" then
+        ApplyModifications()
+        print("Reapplied modifications")
+    else
+        print("CleanCooldown commands:")
+        print("  /ccm rant - Get my thoughts")
+        print("  /ccm reload - Reapply modifications")
+    end
+end
