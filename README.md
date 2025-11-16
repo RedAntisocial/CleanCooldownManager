@@ -34,7 +34,7 @@ No configuration is required for the visual cleanup. Once the addon is enabled t
  Toggle the black borders ON or OFF.
 
 - `/ccm reload`  
- Reapply the clean modofications.
+ Reapply the clean modifications.
 
 ## Files
 
