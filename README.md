@@ -3,3 +3,5 @@ Just some tweaks to clean up the Blizzard Cooldown Manager look and feel until t
 - Zero padding
 - Centered growth
 - No borders
+
+Minimalist. No configuration. No overhead.
