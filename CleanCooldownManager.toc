@@ -4,7 +4,7 @@
 ## Author: Periago - Dalaran
 ## Version: 1.0.0
 ## IconTexture: Interface\Icons\inv_ring_oribos_01_copper
-## X-Curse-Project-ID: 
+## X-Curse-Project-ID: 1386210
 ## X-WoWI-ID: 
 ## X-Wago-ID: 
 ## SavedVariables: CleanCooldownManagerDB
