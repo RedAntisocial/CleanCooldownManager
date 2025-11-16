@@ -38,7 +38,7 @@ local function RemovePadding(viewer)
     
     -- Reposition buttons with overlap
     local xOffset = 0
-    local overlap = -3
+    local overlap = -3 -- This is the value you adjust for the overlap.
     
     for i, child in ipairs(visibleChildren) do
         child:ClearAllPoints()
