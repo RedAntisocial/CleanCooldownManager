@@ -10,8 +10,10 @@ local addon = CreateFrame("Frame")
 addon:RegisterEvent("ADDON_LOADED")
 addon:RegisterEvent("PLAYER_ENTERING_WORLD")
 
-local pendingUpdate = false
+local viewerPending = {}
 
+
+-- Core function to remove padding and apply modifications. Doing Blizzard's work for them.
 local function RemovePadding(viewer)
     -- Don't apply modifications in edit mode
     if EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive() then
@@ -162,16 +164,18 @@ local function RemovePadding(viewer)
     end
 end
 
+-- Schedule an update to apply the modifications during the same frame, but after Blizzard is done mucking with things
 local function ScheduleUpdate(viewer)
-    if pendingUpdate then return end
-    pendingUpdate = true
+    if viewerPending[viewer] then return end
+    viewerPending[viewer] = true
 
     C_Timer.After(0, function()
-        pendingUpdate = false
+        viewerPending[viewer] = nil
         RemovePadding(viewer)
     end)
 end
 
+-- Do the work
 local function ApplyModifications()
     local viewers = {
 ---@diagnostic disable-next-line: undefined-field
@@ -207,6 +211,7 @@ local function ApplyModifications()
     end
 end
 
+-- Oh, are these settings yours? Here you go.
 local function LoadSettings()
     -- Load saved border preference
     if CleanCooldownManagerDB.useBorders ~= nil then
@@ -214,11 +219,14 @@ local function LoadSettings()
     end
 end
 
+-- Put those away for later.
 local function SaveSettings()
     -- Save border preference
     CleanCooldownManagerDB.useBorders = useBorders
 end
 
+
+-- Event handler
 addon:SetScript("OnEvent", function(self, event, arg)
     if event == "ADDON_LOADED" and arg == "CleanCooldownManager" then
         LoadSettings()
