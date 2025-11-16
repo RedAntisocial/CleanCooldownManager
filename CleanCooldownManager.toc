@@ -1,0 +1,10 @@
+## Interface: 110205, 110207, 120000
+## Title: Clean Cooldown Manager
+## Notes: Just some tweaks to clean up the Blizzard Cooldown Manager look and feel until they do them.
+## Author: Periago - Dalaran
+## Version: 1.0.0
+## IconTexture: Interface\Icons\inv_ring_oribos_01_copper
+## X-Curse-Project-ID: 
+## X-WoWI-ID: 
+## X-Wago-ID: 
+CleanCooldownManager.lua
