@@ -2,7 +2,7 @@
 ## Title: Clean Cooldown Manager
 ## Notes: Just some tweaks to clean up the Blizzard Cooldown Manager look and feel until they do them.
 ## Author: Periago - Dalaran
-## Version: 1.0.2
+## Version: 1.0.3
 ## IconTexture: Interface\Icons\inv_ring_oribos_01_copper
 ## X-Curse-Project-ID: 1386210
 ## X-WoWI-ID: 
