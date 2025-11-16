@@ -1,4 +1,11 @@
 -- CleanCooldownManager.lua
+
+-- SavedVariables
+CleanCooldownManagerDB = CleanCooldownManagerDB or {}
+
+-- Local variables
+local useBorders = false
+
 local addon = CreateFrame("Frame")
 addon:RegisterEvent("ADDON_LOADED")
 addon:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -47,14 +54,45 @@ local function RemovePadding(viewer)
     
     -- Get layout settings from the viewer
     local stride = viewer.stride or #visibleChildren
-    local overlap = -2 -- Adjust this value to control icon spacing (more negative = tighter)
+    local iconOpacity = math.min(1, (viewer.iconScale or 1) + 0.2) -- Border is 20% more opaque than the configured Icon Opacity
+    
+    -- CONFIGURATION OPTIONS:
+    local overlap = useBorders and 0 or -3 -- No overlap when using borders
+    local iconScale = 1.15 -- Scale for icons
     
     -- Scale the icons to overlap and hide the transparent borders baked into the textures
     for _, child in ipairs(visibleChildren) do
         if child.Icon then
             child.Icon:ClearAllPoints()
             child.Icon:SetPoint("CENTER", child, "CENTER", 0, 0)
-            child.Icon:SetSize(child:GetWidth() * 1.15, child:GetHeight() * 1.15)
+            child.Icon:SetSize(child:GetWidth() * iconScale, child:GetHeight() * iconScale)
+        end
+        
+        -- Add black border if enabled
+        if useBorders then
+            if not child.border then
+                child.border = child:CreateTexture(nil, "BACKGROUND")
+                child.border:SetColorTexture(0, 0, 0, iconOpacity) -- Black with configured Opacity
+                child.border:SetAllPoints(child)
+            else
+                child.border:SetAlpha(iconOpacity)
+            end
+            child.border:Show()
+            
+            -- Create inner frame to show border effect
+            if not child.borderInset then
+                child.borderInset = child:CreateTexture(nil, "BACKGROUND")
+                child.borderInset:SetColorTexture(0, 0, 0, iconOpacity)
+                child.borderInset:SetPoint("TOPLEFT", child, "TOPLEFT", 1, -1)
+                child.borderInset:SetPoint("BOTTOMRIGHT", child, "BOTTOMRIGHT", -1, 1)
+            else
+                child.borderInset:SetAlpha(iconOpacity)
+            end
+            child.borderInset:Show()
+        else
+            -- Hide borders if they exist
+            if child.border then child.border:Hide() end
+            if child.borderInset then child.borderInset:Hide() end
         end
     end
     
@@ -80,7 +118,7 @@ local function RemovePadding(viewer)
     
     -- Calculate offsets to center the grid
     local startX = -totalWidth / 2
-    local startY = viewer:GetHeight() / 2 -- totalHeight / 2 --uncomment this to center the icon grid vertically
+    local startY = totalHeight / 2
     
     if isHorizontal then
         -- Horizontal layout with wrapping
@@ -147,8 +185,22 @@ local function ApplyModifications()
     end
 end
 
+local function LoadSettings()
+    -- Load saved border preference
+    if CleanCooldownManagerDB.useBorders ~= nil then
+        useBorders = CleanCooldownManagerDB.useBorders
+    end
+end
+
+local function SaveSettings()
+    -- Save border preference
+    CleanCooldownManagerDB.useBorders = useBorders
+end
+
 addon:SetScript("OnEvent", function(self, event, arg)
-    if event == "ADDON_LOADED" and arg == "Blizzard_CooldownManager" then
+    if event == "ADDON_LOADED" and arg == "CleanCooldownManager" then
+        LoadSettings()
+    elseif event == "ADDON_LOADED" and arg == "Blizzard_CooldownManager" then
         C_Timer.After(0.5, ApplyModifications)
     elseif event == "PLAYER_ENTERING_WORLD" then
         C_Timer.After(2, ApplyModifications)
@@ -167,12 +219,18 @@ SlashCmdList["CLEANCOOLDOWN"] = function(msg)
 		print("YOUR ICONS SIT ON A THRONE OF LIES!!!")
 		print("But I fixed it anyway.")
 		print(" - Peri")
+	elseif msg == "borders" then
+		useBorders = not useBorders
+		SaveSettings()
+		print("CleanCooldownManager: Borders " .. (useBorders and "enabled" or "disabled"))
+		ApplyModifications()
     elseif msg == "reload" then
         ApplyModifications()
         print("Reapplied modifications")
     else
-        print("CleanCooldown commands:")
+        print("CleanCooldownManager commands:")
         print("  /ccm rant - Get my thoughts")
+		print("  /ccm borders - Toggle black borders (currently " .. (useBorders and "ON" or "OFF") .. ")")
         print("  /ccm reload - Reapply modifications")
     end
 end
