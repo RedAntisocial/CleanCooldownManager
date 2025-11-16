@@ -6,6 +6,6 @@
 ## IconTexture: Interface\Icons\inv_ring_oribos_01_copper
 ## X-Curse-Project-ID: 1386210
 ## X-WoWI-ID: 
-## X-Wago-ID: 
+## X-Wago-ID: nKW1QoNE
 ## SavedVariables: CleanCooldownManagerDB
 CleanCooldownManager.lua
