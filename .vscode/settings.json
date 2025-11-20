@@ -16,6 +16,7 @@
     ],
     "Lua.diagnostics.globals": [
         "SlashCmdList",
-        "EditModeManagerFrame"
+        "EditModeManagerFrame",
+        "BuffIconCooldownViewer"
     ]
 }

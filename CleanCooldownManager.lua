@@ -5,6 +5,7 @@ CleanCooldownManagerDB = CleanCooldownManagerDB or {}
 
 -- Local variables
 local useBorders = false
+local centerBuffs = true
 
 local addon = CreateFrame("Frame")
 addon:RegisterEvent("ADDON_LOADED")
@@ -35,11 +36,51 @@ local function RemovePadding(viewer)
     end
     
     if #visibleChildren == 0 then return end
-    
-    -- Sort by original position to maintain Blizzard's order
     local isHorizontal = viewer.isHorizontal
+    
+    -- Skip repositioning for BuffIconCooldownViewer if centering is disabled
+    if viewer == _G.BuffIconCooldownViewer and not centerBuffs then
+        -- Still apply scaling and borders
+        for _, child in ipairs(visibleChildren) do
+            local iconAlpha = (child.Icon and child.Icon:GetAlpha()) or 1
+
+            if child.Icon then
+                child.Icon:ClearAllPoints()
+                child.Icon:SetPoint("CENTER", child, "CENTER", 0, 0)
+                child.Icon:SetSize(child:GetWidth() * (viewer.iconScale or 1), child:GetHeight() * (viewer.iconScale or 1))
+                child.Icon:SetAlpha(iconAlpha)
+            end
+
+            if useBorders then
+                local borderAlpha = math.min(1, iconAlpha + 0.05)
+                if not child.border then
+                    child.border = child:CreateTexture(nil, "BACKGROUND")
+                    child.border:SetColorTexture(0, 0, 0, borderAlpha)
+                    child.border:SetAllPoints(child)
+                else
+                    child.border:SetAlpha(borderAlpha)
+                end
+                child.border:Show()
+
+                if not child.borderInset then
+                    child.borderInset = child:CreateTexture(nil, "BACKGROUND")
+                    child.borderInset:SetColorTexture(0, 0, 0, borderAlpha)
+                    child.borderInset:SetPoint("TOPLEFT", child, "TOPLEFT", 1, -1)
+                    child.borderInset:SetPoint("BOTTOMRIGHT", child, "BOTTOMRIGHT", -1, 1)
+                else
+                    child.borderInset:SetAlpha(borderAlpha)
+                end
+                child.borderInset:Show()
+            else
+                if child.border then child.border:Hide() end
+                if child.borderInset then child.borderInset:Hide() end
+            end
+        end
+        return
+    end
+
+    -- Sort by original position for all viewers
     if isHorizontal then
-        -- Sort left to right, then top to bottom
         table.sort(visibleChildren, function(a, b)
             if math.abs(a.originalY - b.originalY) < 1 then
                 return a.originalX < b.originalX
@@ -47,7 +88,6 @@ local function RemovePadding(viewer)
             return a.originalY > b.originalY
         end)
     else
-        -- Sort top to bottom, then left to right
         table.sort(visibleChildren, function(a, b)
             if math.abs(a.originalX - b.originalX) < 1 then
                 return a.originalY > b.originalY
@@ -58,48 +98,48 @@ local function RemovePadding(viewer)
     
     -- Get layout settings from the viewer
     local stride = viewer.stride or #visibleChildren
-    local iconOpacity = math.min(1, (viewer.iconScale or 1) + 0.2) -- Border is 20% more opaque than the configured Icon Opacity
-    
-    -- CONFIGURATION OPTIONS:
-    local overlap = useBorders and 0 or -3 -- No overlap when using borders
-    local iconScale = 1.15 -- Scale for icons
-    
-    -- Scale the icons to overlap and hide the transparent borders baked into the textures
-    for _, child in ipairs(visibleChildren) do
-        if child.Icon then
-            child.Icon:ClearAllPoints()
-            child.Icon:SetPoint("CENTER", child, "CENTER", 0, 0)
-            child.Icon:SetSize(child:GetWidth() * iconScale, child:GetHeight() * iconScale)
-        end
-        
-        -- Add black border if enabled
-        if useBorders then
-            if not child.border then
-                child.border = child:CreateTexture(nil, "BACKGROUND")
-                child.border:SetColorTexture(0, 0, 0, iconOpacity) -- Black with configured Opacity
-                child.border:SetAllPoints(child)
-            else
-                child.border:SetAlpha(iconOpacity)
-            end
-            child.border:Show()
-            
-            -- Create inner frame to show border effect
-            if not child.borderInset then
-                child.borderInset = child:CreateTexture(nil, "BACKGROUND")
-                child.borderInset:SetColorTexture(0, 0, 0, iconOpacity)
-                child.borderInset:SetPoint("TOPLEFT", child, "TOPLEFT", 1, -1)
-                child.borderInset:SetPoint("BOTTOMRIGHT", child, "BOTTOMRIGHT", -1, 1)
-            else
-                child.borderInset:SetAlpha(iconOpacity)
-            end
-            child.borderInset:Show()
-        else
-            -- Hide borders if they exist
-            if child.border then child.border:Hide() end
-            if child.borderInset then child.borderInset:Hide() end
-        end
-    end
-    
+
+	-- CONFIGURATION OPTIONS:
+	local overlap = useBorders and 0 or -3 -- No overlap when using borders
+	local iconScale = viewer.iconScale or 1
+
+	-- Scale the icons and preserve actual alpha
+	for _, child in ipairs(visibleChildren) do
+		local iconAlpha = (child.Icon and child.Icon:GetAlpha()) or 1
+
+		if child.Icon then
+			child.Icon:ClearAllPoints()
+			child.Icon:SetPoint("CENTER", child, "CENTER", 0, 0)
+			child.Icon:SetSize(child:GetWidth() * iconScale, child:GetHeight() * iconScale)
+			child.Icon:SetAlpha(iconAlpha)
+		end
+
+		if useBorders then
+			local borderAlpha = math.min(1, iconAlpha + 0.05)
+			if not child.border then
+				child.border = child:CreateTexture(nil, "BACKGROUND")
+				child.border:SetColorTexture(0, 0, 0, borderAlpha)
+				child.border:SetAllPoints(child)
+			else
+				child.border:SetAlpha(borderAlpha)
+			end
+			child.border:Show()
+
+			if not child.borderInset then
+				child.borderInset = child:CreateTexture(nil, "BACKGROUND")
+				child.borderInset:SetColorTexture(0, 0, 0, borderAlpha)
+				child.borderInset:SetPoint("TOPLEFT", child, "TOPLEFT", 1, -1)
+				child.borderInset:SetPoint("BOTTOMRIGHT", child, "BOTTOMRIGHT", -1, 1)
+			else
+				child.borderInset:SetAlpha(borderAlpha)
+			end
+			child.borderInset:Show()
+		else
+			if child.border then child.border:Hide() end
+			if child.borderInset then child.borderInset:Hide() end
+		end
+	end
+
     -- Reposition buttons respecting orientation and stride
     local buttonWidth = visibleChildren[1]:GetWidth()
     local buttonHeight = visibleChildren[1]:GetHeight()
@@ -128,41 +168,42 @@ local function RemovePadding(viewer)
         -- Horizontal layout with wrapping
         for i, child in ipairs(visibleChildren) do
             local index = i - 1
-			local row = math.floor(index / stride)
-			local col = index % stride
+            local row = math.floor(index / stride)
+            local col = index % stride
 
-			-- Determine number of icons in this row
-			local rowStart = row * stride + 1
-			local rowEnd = math.min(rowStart + stride - 1, numIcons)
-			local iconsInRow = rowEnd - rowStart + 1
+            -- Determine number of icons in this row
+            local rowStart = row * stride + 1
+            local rowEnd = math.min(rowStart + stride - 1, numIcons)
+            local iconsInRow = rowEnd - rowStart + 1
 
-			-- Compute the actual width of this row
-			local rowWidth = iconsInRow * buttonWidth + (iconsInRow - 1) * overlap
+            -- Compute the actual width of this row
+            local rowWidth = iconsInRow * buttonWidth + (iconsInRow - 1) * overlap
 
-			-- Center this row
-			local rowStartX = -rowWidth / 2
+            -- Center this row
+            local rowStartX = -rowWidth / 2
 
-			-- Column offset inside centered row
-			local xOffset = rowStartX + col * (buttonWidth + overlap)
-			local yOffset = startY - row * (buttonHeight + overlap)
+            -- Column offset inside centered row
+            local xOffset = rowStartX + col * (buttonWidth + overlap)
+            local yOffset = startY - row * (buttonHeight + overlap)
 
-			child:ClearAllPoints()
-			child:SetPoint("CENTER", viewer, "CENTER", xOffset + buttonWidth/2, yOffset - buttonHeight/2)
+            child:ClearAllPoints()
+            child:SetPoint("CENTER", viewer, "CENTER", xOffset + buttonWidth/2, yOffset - buttonHeight/2)
         end
     else
         -- Vertical layout with wrapping
         for i, child in ipairs(visibleChildren) do
             local row = (i - 1) % stride
             local col = math.floor((i - 1) / stride)
-            
+
             local xOffset = startX + col * (buttonWidth + overlap)
             local yOffset = startY - row * (buttonHeight + overlap)
-            
+
             child:ClearAllPoints()
             child:SetPoint("CENTER", viewer, "CENTER", xOffset + buttonWidth/2, yOffset - buttonHeight/2)
         end
     end
 end
+
 
 local updaterFrame = CreateFrame("Frame")
 updaterFrame:Hide()
@@ -190,7 +231,8 @@ local function ApplyModifications()
 ---@diagnostic disable-next-line: undefined-field
         _G.EssentialCooldownViewer,
 ---@diagnostic disable-next-line: undefined-field
-        _G.BuffCoolDownViewer
+        _G.BuffIconCooldownViewer
+
     }
     
     for _, viewer in ipairs(viewers) do
@@ -216,6 +258,46 @@ local function ApplyModifications()
             end
         end
     end
+    -- BuffIconCooldownViewer loads later, hook it separately
+    C_Timer.After(0.1, function()
+        if _G.BuffIconCooldownViewer then
+            RemovePadding(_G.BuffIconCooldownViewer)
+            
+            -- Hook Layout to reapply when icons change
+            if _G.BuffIconCooldownViewer.Layout then
+                hooksecurefunc(_G.BuffIconCooldownViewer, "Layout", function()
+                    ScheduleUpdate(_G.BuffIconCooldownViewer)
+                end)
+            end
+            
+            -- Hook Show/Hide on existing and future children
+            local function HookChild(child)
+                child:HookScript("OnShow", function()
+                    ScheduleUpdate(_G.BuffIconCooldownViewer)
+                end)
+                child:HookScript("OnHide", function()
+                    ScheduleUpdate(_G.BuffIconCooldownViewer)
+                end)
+            end
+            
+            local children = {_G.BuffIconCooldownViewer:GetChildren()}
+            for _, child in ipairs(children) do
+                HookChild(child)
+            end
+            
+            -- Monitor for new children
+            _G.BuffIconCooldownViewer:HookScript("OnUpdate", function(self)
+                local currentChildren = {self:GetChildren()}
+                for _, child in ipairs(currentChildren) do
+                    if not child.cleanCooldownHooked then
+                        child.cleanCooldownHooked = true
+                        HookChild(child)
+                        ScheduleUpdate(self)
+                    end
+                end
+            end)
+        end
+    end)
 end
 
 -- Oh, are these settings yours? Here you go.
@@ -224,12 +306,16 @@ local function LoadSettings()
     if CleanCooldownManagerDB.useBorders ~= nil then
         useBorders = CleanCooldownManagerDB.useBorders
     end
+    if CleanCooldownManagerDB.centerBuffs ~= nil then
+        centerBuffs = CleanCooldownManagerDB.centerBuffs
+    end
 end
 
 -- Put those away for later.
 local function SaveSettings()
     -- Save border preference
     CleanCooldownManagerDB.useBorders = useBorders
+    CleanCooldownManagerDB.centerBuffs = centerBuffs
 end
 
 
@@ -261,6 +347,11 @@ SlashCmdList["CLEANCOOLDOWN"] = function(msg)
 		SaveSettings()
 		print("CleanCooldownManager: Borders " .. (useBorders and "enabled" or "disabled"))
 		ApplyModifications()
+    elseif msg == "buffs" then
+        centerBuffs = not centerBuffs
+        SaveSettings()
+        print("CleanCooldownManager: Buff centering " .. (centerBuffs and "enabled" or "disabled"))
+        ApplyModifications()
     elseif msg == "reload" then
         ApplyModifications()
         print("Reapplied modifications")
@@ -268,6 +359,7 @@ SlashCmdList["CLEANCOOLDOWN"] = function(msg)
         print("CleanCooldownManager commands:")
         print("  /ccm rant - Get my thoughts")
 		print("  /ccm borders - Toggle black borders (currently " .. (useBorders and "ON" or "OFF") .. ")")
+        print("  /ccm buffs - Toggle buff icon centering (currently " .. (centerBuffs and "ON" or "OFF") .. ")")
         print("  /ccm reload - Reapply modifications")
     end
 end
