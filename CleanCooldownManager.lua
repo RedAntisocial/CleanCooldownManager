@@ -236,48 +236,73 @@ local function ApplyModifications()
     }
     
     for _, viewer in ipairs(viewers) do
-        if viewer and viewerSettings[viewer:GetName()] then
-            RemovePadding(viewer)
-            
-            -- Hook Layout to reapply when Blizzard updates
-            if viewer.Layout then
-                hooksecurefunc(viewer, "Layout", function()
-                    ScheduleUpdate(viewer)
-                end)
-            end
-            
-            -- Hook Show/Hide to reapply when icons appear/disappear
-            local children = {viewer:GetChildren()}
-            for _, child in ipairs(children) do
-                child:HookScript("OnShow", function()
-                    ScheduleUpdate(viewer)
-                end)
-                child:HookScript("OnHide", function()
-                    ScheduleUpdate(viewer)
-                end)
+        if viewer then
+            local viewerName = viewer:GetName()
+            if viewerSettings[viewerName] then
+                RemovePadding(viewer)
+                
+                -- Hook Layout to reapply when Blizzard updates
+                if viewer.Layout and not viewer.cleanCooldownLayoutHooked then
+                    viewer.cleanCooldownLayoutHooked = true
+                    hooksecurefunc(viewer, "Layout", function()
+                        if viewerSettings[viewerName] then
+                            ScheduleUpdate(viewer)
+                        end
+                    end)
+                end
+                
+                -- Hook Show/Hide to reapply when icons appear/disappear
+                local children = {viewer:GetChildren()}
+                for _, child in ipairs(children) do
+                    if not child.cleanCooldownHooked then
+                        child.cleanCooldownHooked = true
+                        child:HookScript("OnShow", function()
+                            if viewerSettings[viewerName] then
+                                ScheduleUpdate(viewer)
+                            end
+                        end)
+                        child:HookScript("OnHide", function()
+                            if viewerSettings[viewerName] then
+                                ScheduleUpdate(viewer)
+                            end
+                        end)
+                    end
+                end
             end
         end
     end
     -- BuffIconCooldownViewer loads later, hook it separately
     C_Timer.After(0.1, function()
-        if _G.BuffIconCooldownViewer and viewerSettings.BuffIconCooldownViewer then
-            RemovePadding(_G.BuffIconCooldownViewer)
+        if _G.BuffIconCooldownViewer then
+            if viewerSettings.BuffIconCooldownViewer then
+                RemovePadding(_G.BuffIconCooldownViewer)
+            end
             
             -- Hook Layout to reapply when icons change
-            if _G.BuffIconCooldownViewer.Layout then
+            if _G.BuffIconCooldownViewer.Layout and not _G.BuffIconCooldownViewer.cleanCooldownLayoutHooked then
+                _G.BuffIconCooldownViewer.cleanCooldownLayoutHooked = true
                 hooksecurefunc(_G.BuffIconCooldownViewer, "Layout", function()
-                    ScheduleUpdate(_G.BuffIconCooldownViewer)
+                    if viewerSettings.BuffIconCooldownViewer then
+                        ScheduleUpdate(_G.BuffIconCooldownViewer)
+                    end
                 end)
             end
             
             -- Hook Show/Hide on existing and future children
             local function HookChild(child)
-                child:HookScript("OnShow", function()
-                    ScheduleUpdate(_G.BuffIconCooldownViewer)
-                end)
-                child:HookScript("OnHide", function()
-                    ScheduleUpdate(_G.BuffIconCooldownViewer)
-                end)
+                if not child.cleanCooldownHooked then
+                    child.cleanCooldownHooked = true
+                    child:HookScript("OnShow", function()
+                        if viewerSettings.BuffIconCooldownViewer then
+                            ScheduleUpdate(_G.BuffIconCooldownViewer)
+                        end
+                    end)
+                    child:HookScript("OnHide", function()
+                        if viewerSettings.BuffIconCooldownViewer then
+                            ScheduleUpdate(_G.BuffIconCooldownViewer)
+                        end
+                    end)
+                end
             end
             
             local children = {_G.BuffIconCooldownViewer:GetChildren()}
@@ -286,16 +311,20 @@ local function ApplyModifications()
             end
             
             -- Monitor for new children
-            _G.BuffIconCooldownViewer:HookScript("OnUpdate", function(self)
-                local currentChildren = {self:GetChildren()}
-                for _, child in ipairs(currentChildren) do
-                    if not child.cleanCooldownHooked then
-                        child.cleanCooldownHooked = true
-                        HookChild(child)
-                        ScheduleUpdate(self)
+            if not _G.BuffIconCooldownViewer.cleanCooldownUpdateHooked then
+                _G.BuffIconCooldownViewer.cleanCooldownUpdateHooked = true
+                _G.BuffIconCooldownViewer:HookScript("OnUpdate", function(self)
+                    local currentChildren = {self:GetChildren()}
+                    for _, child in ipairs(currentChildren) do
+                        if not child.cleanCooldownHooked then
+                            HookChild(child)
+                            if viewerSettings.BuffIconCooldownViewer then
+                                ScheduleUpdate(self)
+                            end
+                        end
                     end
-                end
-            end)
+                end)
+            end
         end
     end)
 end
