@@ -1,12 +1,16 @@
 -- CleanCooldownManager.lua
-
 -- SavedVariables
 CleanCooldownManagerDB = CleanCooldownManagerDB or {}
 
 -- Local variables
 local useBorders = false
 local centerBuffs = true
-
+local viewerSettings = {
+    UtilityCooldownViewer = true,
+    EssentialCooldownViewer = true,
+    BuffIconCooldownViewer = true
+    }
+    
 local addon = CreateFrame("Frame")
 addon:RegisterEvent("ADDON_LOADED")
 addon:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -226,17 +230,13 @@ end
 -- Do the work
 local function ApplyModifications()
     local viewers = {
----@diagnostic disable-next-line: undefined-field
         _G.UtilityCooldownViewer,
----@diagnostic disable-next-line: undefined-field
         _G.EssentialCooldownViewer,
----@diagnostic disable-next-line: undefined-field
         _G.BuffIconCooldownViewer
-
     }
     
     for _, viewer in ipairs(viewers) do
-        if viewer then
+        if viewer and viewerSettings[viewer:GetName()] then
             RemovePadding(viewer)
             
             -- Hook Layout to reapply when Blizzard updates
@@ -260,7 +260,7 @@ local function ApplyModifications()
     end
     -- BuffIconCooldownViewer loads later, hook it separately
     C_Timer.After(0.1, function()
-        if _G.BuffIconCooldownViewer then
+        if _G.BuffIconCooldownViewer and viewerSettings.BuffIconCooldownViewer then
             RemovePadding(_G.BuffIconCooldownViewer)
             
             -- Hook Layout to reapply when icons change
@@ -309,6 +309,12 @@ local function LoadSettings()
     if CleanCooldownManagerDB.centerBuffs ~= nil then
         centerBuffs = CleanCooldownManagerDB.centerBuffs
     end
+    -- Load viewer settings
+    if CleanCooldownManagerDB.viewerSettings then
+        for k, v in pairs(CleanCooldownManagerDB.viewerSettings) do
+            viewerSettings[k] = v
+        end
+    end
 end
 
 -- Put those away for later.
@@ -316,6 +322,7 @@ local function SaveSettings()
     -- Save border preference
     CleanCooldownManagerDB.useBorders = useBorders
     CleanCooldownManagerDB.centerBuffs = centerBuffs
+    CleanCooldownManagerDB.viewerSettings = viewerSettings
 end
 
 
@@ -347,10 +354,25 @@ SlashCmdList["CLEANCOOLDOWN"] = function(msg)
 		SaveSettings()
 		print("CleanCooldownManager: Borders " .. (useBorders and "enabled" or "disabled"))
 		ApplyModifications()
-    elseif msg == "buffs" then
+    elseif msg == "centerbuffs" then
         centerBuffs = not centerBuffs
         SaveSettings()
         print("CleanCooldownManager: Buff centering " .. (centerBuffs and "enabled" or "disabled"))
+        ApplyModifications()
+    elseif msg == "utility" then
+        viewerSettings.UtilityCooldownViewer = not viewerSettings.UtilityCooldownViewer
+        SaveSettings()
+        print("CleanCooldownManager: Utility bar " .. (viewerSettings.UtilityCooldownViewer and "enabled" or "disabled"))
+        ApplyModifications()
+    elseif msg == "essential" then
+        viewerSettings.EssentialCooldownViewer = not viewerSettings.EssentialCooldownViewer
+        SaveSettings()
+        print("CleanCooldownManager: Essential bar " .. (viewerSettings.EssentialCooldownViewer and "enabled" or "disabled"))
+        ApplyModifications()
+    elseif msg == "buff" then
+        viewerSettings.BuffIconCooldownViewer = not viewerSettings.BuffIconCooldownViewer
+        SaveSettings()
+        print("CleanCooldownManager: Buff bar " .. (viewerSettings.BuffIconCooldownViewer and "enabled" or "disabled"))
         ApplyModifications()
     elseif msg == "reload" then
         ApplyModifications()
@@ -359,7 +381,10 @@ SlashCmdList["CLEANCOOLDOWN"] = function(msg)
         print("CleanCooldownManager commands:")
         print("  /ccm rant - Get my thoughts")
 		print("  /ccm borders - Toggle black borders (currently " .. (useBorders and "ON" or "OFF") .. ")")
-        print("  /ccm buffs - Toggle buff icon centering (currently " .. (centerBuffs and "ON" or "OFF") .. ")")
+        print("  /ccm centerbuffs - Toggle buff icon centering (currently " .. (centerBuffs and "ON" or "OFF") .. ")")
+        print("  /ccm utility - Toggle utility bar (currently " .. (viewerSettings.UtilityCooldownViewer and "ON" or "OFF") .. ")")
+        print("  /ccm essential - Toggle essential bar (currently " .. (viewerSettings.EssentialCooldownViewer and "ON" or "OFF") .. ")")
+        print("  /ccm buff - Toggle buff bar (currently " .. (viewerSettings.BuffIconCooldownViewer and "ON" or "OFF") .. ")")
         print("  /ccm reload - Reapply modifications")
     end
 end
