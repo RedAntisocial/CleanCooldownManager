@@ -33,13 +33,29 @@ No configuration is required for the visual cleanup. Once the addon is enabled t
 - `/ccm borders`  
  Toggle the black borders ON or OFF.
 
+- `/ccm centerbuffs`  
+Toggle buff icon centering ON or Off.
+
+- `/ccm utility`  
+ Toggle modifications to the Utility bar ON or OFF.
+
+- `/ccm essential`  
+ Toggle modifications to the Essentials bar ON or OFF.
+
+- `/ccm buff`  
+ Toggle modifications to the Buffs bar ON or OFF.
+
+- `/ccm settings`  
+ Open Advanced Cooldown Manager settings (no jumping through hoops).
+
 - `/ccm reload`  
  Reapply the clean modifications.
 
 ## Files
 
 - `CleanCooldownManager.toc` — AddOn manifest for WoW.  
-- `CleanCooldownManager.lua` — The core Lua script implementing the tweaks.  
+- `CleanCooldownManager.lua` — The core Lua script implementing the tweaks.
+- `OptionsPanel.lua` - The modular options panel.
 - `LICENSE` — This project is licensed under the GNU General Public License v3.0.  
 - `README.md` — This documentation file.
 
