@@ -1,6 +1,9 @@
 -- CleanCooldownManager.lua
 -- SavedVariables
 CleanCooldownManagerDB = CleanCooldownManagerDB or {}
+-- CleanCooldownManager.lua
+-- SavedVariables
+CleanCooldownManagerDB = CleanCooldownManagerDB or {}
 
 -- Local variables
 local useBorders = false
@@ -18,9 +21,48 @@ addon:RegisterEvent("PLAYER_ENTERING_WORLD")
 local viewerPending = {}
 local updateBucket = {}
 
+-- A clean up for when bars are disabled.
+local function RemoveModifications(viewer)
+    local children = {viewer:GetChildren()}
+	-- debug
+	-- print("RemoveModifications: found", #children, "children for", viewer:GetName())
+    for _, child in ipairs(children) do
+		-- debug
+		-- print("  Processing child:", child:GetName() or "unnamed")
+        if child.Icon then
+            child.Icon:ClearAllPoints()
+            child.Icon:SetPoint("CENTER", child, "CENTER", 0, 0)
+            child.Icon:SetSize(child:GetWidth(), child:GetHeight())
+			-- debug
+			-- print("    Reset icon size and position")
+        end
+        if child.border then 
+			child.border:Hide() 
+			-- debug
+			-- print("    Hid border")
+		end
+        if child.borderInset then 
+			child.borderInset:Hide()
+			-- debug
+			-- print("    Hid borderInset")
+		end
+    end
+end
+
 -- Core function to remove padding and apply modifications. Doing Blizzard's work for them.
 local function RemovePadding(viewer)
-    -- Don't apply modifications in edit mode
+    -- Skip modifications if the viewer is disabled
+    local viewerName = viewer:GetName()
+	-- debug
+	-- print("RemovePadding called for", viewerName, "enabled:", viewerSettings[viewerName])
+    if not viewerSettings[viewerName] then
+		-- debug
+		-- print("Calling RemoveModifications for", viewerName)
+		RemoveModifications(viewer)
+        return
+    end
+	
+	-- Don't apply modifications in edit mode
     if EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive() then
         return
     end
@@ -48,27 +90,33 @@ local function RemovePadding(viewer)
         for _, child in ipairs(visibleChildren) do
             local iconAlpha = (child.Icon and child.Icon:GetAlpha()) or 1
 
-            if child.Icon then
-                child.Icon:ClearAllPoints()
-                child.Icon:SetPoint("CENTER", child, "CENTER", 0, 0)
-                child.Icon:SetSize(child:GetWidth() * (viewer.iconScale or 1), child:GetHeight() * (viewer.iconScale or 1))
-                child.Icon:SetAlpha(iconAlpha)
-            end
+			if child.Icon then
+				child.Icon:ClearAllPoints()
+				child.Icon:SetPoint("CENTER", child, "CENTER", 0, 0)
+				child.Icon:SetSize(child:GetWidth() * (viewer.iconScale or 1), child:GetHeight() * (viewer.iconScale or 1))
+				
+				if useBorders then
+					local adjustedIconAlpha = math.max(0, iconAlpha - 0.2)
+					child.Icon:SetAlpha(adjustedIconAlpha)
+				else
+					child.Icon:SetAlpha(iconAlpha)
+				end
+			end
 
             if useBorders then
-                local borderAlpha = math.min(1, iconAlpha + 0.05)
+                local borderAlpha = iconAlpha
                 if not child.border then
                     child.border = child:CreateTexture(nil, "BACKGROUND")
-                    child.border:SetColorTexture(0, 0, 0, borderAlpha)
+                    child.border:SetColorTexture(0, 0, 0, iconAlpha)
                     child.border:SetAllPoints(child)
                 else
-                    child.border:SetAlpha(borderAlpha)
+                    child.border:SetAlpha(iconAlpha)
                 end
                 child.border:Show()
 
                 if not child.borderInset then
                     child.borderInset = child:CreateTexture(nil, "BACKGROUND")
-                    child.borderInset:SetColorTexture(0, 0, 0, borderAlpha)
+                    child.borderInset:SetColorTexture(0, 0, 0, iconAlpha)
                     child.borderInset:SetPoint("TOPLEFT", child, "TOPLEFT", 1, -1)
                     child.borderInset:SetPoint("BOTTOMRIGHT", child, "BOTTOMRIGHT", -1, 1)
                 else
@@ -114,28 +162,34 @@ local function RemovePadding(viewer)
 		if child.Icon then
 			child.Icon:ClearAllPoints()
 			child.Icon:SetPoint("CENTER", child, "CENTER", 0, 0)
-			child.Icon:SetSize(child:GetWidth() * iconScale, child:GetHeight() * iconScale)
-			child.Icon:SetAlpha(iconAlpha)
+			child.Icon:SetSize(child:GetWidth() * (viewer.iconScale or 1), child:GetHeight() * (viewer.iconScale or 1))
+			
+			if useBorders then
+				local adjustedIconAlpha = math.max(0, iconAlpha - 0.2)
+				child.Icon:SetAlpha(adjustedIconAlpha)
+			else
+				child.Icon:SetAlpha(iconAlpha)
+			end
 		end
 
 		if useBorders then
-			local borderAlpha = math.min(1, iconAlpha + 0.05)
+			local borderAlpha = iconAlpha
 			if not child.border then
 				child.border = child:CreateTexture(nil, "BACKGROUND")
-				child.border:SetColorTexture(0, 0, 0, borderAlpha)
+				child.border:SetColorTexture(0, 0, 0, iconAlpha)
 				child.border:SetAllPoints(child)
 			else
-				child.border:SetAlpha(borderAlpha)
+				child.border:SetAlpha(iconAlpha)
 			end
 			child.border:Show()
 
 			if not child.borderInset then
 				child.borderInset = child:CreateTexture(nil, "BACKGROUND")
-				child.borderInset:SetColorTexture(0, 0, 0, borderAlpha)
+				child.borderInset:SetColorTexture(0, 0, 0, iconAlpha)
 				child.borderInset:SetPoint("TOPLEFT", child, "TOPLEFT", 1, -1)
 				child.borderInset:SetPoint("BOTTOMRIGHT", child, "BOTTOMRIGHT", -1, 1)
 			else
-				child.borderInset:SetAlpha(borderAlpha)
+				child.borderInset:SetAlpha(iconAlpha)
 			end
 			child.borderInset:Show()
 		else
@@ -223,6 +277,8 @@ end)
 
 -- Schedule an update to apply the modifications during the same frame, but after Blizzard is done mucking with things
 local function ScheduleUpdate(viewer)
+	local viewerName = viewer:GetName()
+    if not viewerSettings[viewerName] then return end
     updateBucket[viewer] = true
     updaterFrame:Show()
 end
@@ -238,8 +294,9 @@ local function ApplyModifications()
     for _, viewer in ipairs(viewers) do
         if viewer then
             local viewerName = viewer:GetName()
+			RemovePadding(viewer)
+			
             if viewerSettings[viewerName] then
-                RemovePadding(viewer)
                 
                 -- Hook Layout to reapply when Blizzard updates
                 if viewer.Layout and not viewer.cleanCooldownLayoutHooked then
@@ -406,6 +463,15 @@ SlashCmdList["CLEANCOOLDOWN"] = function(msg)
     elseif msg == "reload" then
         ApplyModifications()
         print("Reapplied modifications")
+	elseif msg == "settings" then
+		C_AddOns.LoadAddOn("Blizzard_CooldownManager")
+		C_Timer.After(0.1, function()
+			if _G.CooldownViewerSettings then
+				_G.CooldownViewerSettings:Show()
+			else
+				print("CooldownViewerSettings not available")
+			end
+		end)
     else
         print("CleanCooldownManager commands:")
         print("  /ccm rant - Get my thoughts")
@@ -414,6 +480,123 @@ SlashCmdList["CLEANCOOLDOWN"] = function(msg)
         print("  /ccm utility - Toggle utility bar (currently " .. (viewerSettings.UtilityCooldownViewer and "ON" or "OFF") .. ")")
         print("  /ccm essential - Toggle essential bar (currently " .. (viewerSettings.EssentialCooldownViewer and "ON" or "OFF") .. ")")
         print("  /ccm buff - Toggle buff bar (currently " .. (viewerSettings.BuffIconCooldownViewer and "ON" or "OFF") .. ")")
+		print("  /ccm settings - Open Advanced Cooldown Manager Settings")
         print("  /ccm reload - Reapply modifications")
     end
 end
+
+-- Options Panel Setup
+local panel = OptionsPanel:NewPanel({
+    name = "CleanCooldownManager",
+    displayName = "Clean Cooldown Manager",
+    title = "Clean Cooldown Manager"
+})
+
+-- Borders checkbox
+OptionsPanel:AddCheckbox(panel, {
+    key = "useBorders",
+    label = "Enable Borders",
+    default = useBorders,
+    onClick = function(val)
+        useBorders = val
+        SaveSettings()
+		LoadSettings()
+        ApplyModifications()
+    end,
+    point = "TOPLEFT",
+    anchor = panel.title,
+    relativePoint = "BOTTOMLEFT",
+    xOffset = 0,
+    yOffset = -20
+})
+
+-- Center buffs checkbox
+OptionsPanel:AddCheckbox(panel, {
+    key = "centerBuffs",
+    label = "Center Buff Icons",
+    default = centerBuffs,
+    onClick = function(val)
+        centerBuffs = val
+        SaveSettings()
+        ApplyModifications()
+    end,
+    point = "TOPLEFT",
+    anchor = panel.elements.useBorders,
+    relativePoint = "BOTTOMLEFT",
+    xOffset = 0,
+    yOffset = -10
+})
+
+-- Utility bar dropdown
+OptionsPanel:AddDropdown(panel, {
+    key = "utilityViewer",
+    label = "Utility Cooldown Viewer",
+    default = viewerSettings.UtilityCooldownViewer and "enabled" or "disabled",
+    options = {
+        { text = "Enabled", value = "enabled" },
+        { text = "Disabled", value = "disabled" }
+    },
+    onSelect = function(val)
+		-- debug
+		-- print("Dropdown onSelect called with value:", val, "type:", type(val))
+        viewerSettings.UtilityCooldownViewer = (val == "enabled")
+        SaveSettings()
+        ApplyModifications()
+    end,
+    point = "TOPLEFT",
+    anchor = panel.elements.centerBuffs,
+    relativePoint = "BOTTOMLEFT",
+	labelOffset = 160,
+    xOffset = 0,
+    yOffset = -20
+})
+
+-- Essential bar dropdown
+OptionsPanel:AddDropdown(panel, {
+    key = "essentialViewer",
+    label = "Essential Cooldown Viewer",
+    default = viewerSettings.EssentialCooldownViewer and "enabled" or "disabled",
+    options = {
+        { text = "Enabled", value = "enabled" },
+        { text = "Disabled", value = "disabled" }
+    },
+    onSelect = function(val)
+		-- debug
+		-- print("Dropdown onSelect called with value:", val, "type:", type(val))
+        viewerSettings.EssentialCooldownViewer = (val == "enabled")
+        SaveSettings()
+        ApplyModifications()
+    end,
+    point = "TOPLEFT",
+    anchor = panel.elements.utilityViewer.label,
+    relativePoint = "BOTTOMLEFT",
+	labelOffset = 160,
+    xOffset = 0,
+    yOffset = -20
+})
+
+-- Buff bar dropdown
+OptionsPanel:AddDropdown(panel, {
+    key = "buffViewer",
+    label = "Buff Cooldown Viewer",
+    default = viewerSettings.BuffIconCooldownViewer and "enabled" or "disabled",
+    options = {
+        { text = "Enabled", value = "enabled" },
+        { text = "Disabled", value = "disabled" }
+    },
+    onSelect = function(val)
+		-- debug
+		-- print("Dropdown onSelect called with value:", val, "type:", type(val))
+        viewerSettings.BuffIconCooldownViewer = (val == "enabled")
+        SaveSettings()
+        ApplyModifications()
+    end,
+    point = "TOPLEFT",
+    anchor = panel.elements.essentialViewer.label,
+    relativePoint = "BOTTOMLEFT",
+	labelOffset = 160,
+    xOffset = 0,
+    yOffset = -20
+})
+
+OptionsPanel:Register(panel)
