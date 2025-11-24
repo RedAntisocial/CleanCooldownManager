@@ -120,7 +120,7 @@ local function RemovePadding(viewer)
                     child.borderInset:SetPoint("TOPLEFT", child, "TOPLEFT", 1, -1)
                     child.borderInset:SetPoint("BOTTOMRIGHT", child, "BOTTOMRIGHT", -1, 1)
                 else
-                    child.borderInset:SetAlpha(borderAlpha)
+                    child.borderInset:SetAlpha(iconAlpha)
                 end
                 child.borderInset:Show()
             else
