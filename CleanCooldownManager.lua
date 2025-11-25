@@ -8,12 +8,15 @@ CleanCooldownManagerDB = CleanCooldownManagerDB or {}
 -- Local variables
 local useBorders = false
 local centerBuffs = true
+local borderAlpha
+local iconAlpha
 local viewerSettings = {
     UtilityCooldownViewer = true,
     EssentialCooldownViewer = true,
     BuffIconCooldownViewer = true
     }
-    
+
+
 local addon = CreateFrame("Frame")
 addon:RegisterEvent("ADDON_LOADED")
 addon:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -82,15 +85,20 @@ local function RemovePadding(viewer)
     end
     
     if #visibleChildren == 0 then return end
+	
     local isHorizontal = viewer.isHorizontal
     
     -- Skip repositioning for BuffIconCooldownViewer if centering is disabled
     if viewer == _G.BuffIconCooldownViewer and not centerBuffs then
         -- Still apply scaling and borders
         for _, child in ipairs(visibleChildren) do
-            local iconAlpha = (child.Icon and child.Icon:GetAlpha()) or 1
-
-			if child.Icon then
+            if child.Icon then
+				-- Store original alpha if not already stored
+				if not child.originalIconAlpha then
+					child.originalIconAlpha = child.Icon:GetAlpha()
+				end
+				iconAlpha = child.originalIconAlpha
+				
 				child.Icon:ClearAllPoints()
 				child.Icon:SetPoint("CENTER", child, "CENTER", 0, 0)
 				child.Icon:SetSize(child:GetWidth() * (viewer.iconScale or 1), child:GetHeight() * (viewer.iconScale or 1))
@@ -104,7 +112,7 @@ local function RemovePadding(viewer)
 			end
 
             if useBorders then
-                local borderAlpha = iconAlpha
+                borderAlpha = iconAlpha
                 if not child.border then
                     child.border = child:CreateTexture(nil, "BACKGROUND")
                     child.border:SetColorTexture(0, 0, 0, iconAlpha)
@@ -131,25 +139,123 @@ local function RemovePadding(viewer)
         return
     end
 
-    -- Sort by original position for all viewers
-    if isHorizontal then
-        table.sort(visibleChildren, function(a, b)
-            if math.abs(a.originalY - b.originalY) < 1 then
-                return a.originalX < b.originalX
-            end
-            return a.originalY > b.originalY
-        end)
-    else
-        table.sort(visibleChildren, function(a, b)
-            if math.abs(a.originalX - b.originalX) < 1 then
-                return a.originalY > b.originalY
-            end
-            return a.originalX < b.originalX
-        end)
-    end
+ 	-- Handle sorting based on viewer type
+	if viewer == _G.BuffIconCooldownViewer then
+		-- Get BuffIconCooldownViewer's sorted list
+		local buffIcons = viewer:GetItemFrames()
+		if buffIcons and #buffIcons > 0 then
+			-- Filter to only visible ones
+			visibleChildren = {}
+			for _, frame in ipairs(buffIcons) do
+				if frame:IsShown() then
+					table.insert(visibleChildren, frame)
+				end
+			end
+		end
+	else
+		-- Sort by original position for other viewers
+		if isHorizontal then
+			table.sort(visibleChildren, function(a, b)
+				if math.abs(a.originalY - b.originalY) < 1 then
+					return a.originalX < b.originalX
+				end
+				return a.originalY > b.originalY
+			end)
+		else
+			table.sort(visibleChildren, function(a, b)
+				if math.abs(a.originalX - b.originalX) < 1 then
+					return a.originalY > b.originalY
+				end
+				return a.originalX < b.originalX
+			end)
+		end
+	end
     
+	-- Use special centering logic for BuffIconCooldownViewer
+	if viewer == _G.BuffIconCooldownViewer and centerBuffs then
+		local padding = useBorders and 0 or -3
+		local count = #visibleChildren
+		local isEven = count % 2 == 0
+		
+		if isEven then
+			local leftMiddleIndex = count / 2
+			local rightMiddleIndex = leftMiddleIndex + 1
+			
+			visibleChildren[leftMiddleIndex]:ClearAllPoints()
+			visibleChildren[leftMiddleIndex]:SetPoint("RIGHT", viewer, "CENTER", -padding / 2, 0)
+			
+			visibleChildren[rightMiddleIndex]:ClearAllPoints()
+			visibleChildren[rightMiddleIndex]:SetPoint("LEFT", viewer, "CENTER", padding / 2, 0)
+		else
+			local middleIndex = math.ceil(count / 2)
+			visibleChildren[middleIndex]:ClearAllPoints()
+			visibleChildren[middleIndex]:SetPoint("CENTER", viewer, "CENTER", 0, 0)
+		end
+		
+		-- Position left side
+		local leftStart = isEven and (count / 2 - 1) or (math.ceil(count / 2) - 1)
+		for i = leftStart, 1, -1 do
+			visibleChildren[i]:ClearAllPoints()
+			visibleChildren[i]:SetPoint("RIGHT", visibleChildren[i + 1], "LEFT", -padding, 0)
+		end
+		
+		-- Position right side
+		local rightStart = isEven and (count / 2 + 2) or (math.ceil(count / 2) + 1)
+		for i = rightStart, count do
+			visibleChildren[i]:ClearAllPoints()
+			visibleChildren[i]:SetPoint("LEFT", visibleChildren[i - 1], "RIGHT", padding, 0)
+		end
+		-- Apply scaling and borders for BuffIconCooldownViewer
+		for _, child in ipairs(visibleChildren) do
+			if child.Icon then
+				-- Store original alpha if not already stored
+				if not child.originalIconAlpha then
+					child.originalIconAlpha = child.Icon:GetAlpha()
+				end
+				local iconAlpha = child.originalIconAlpha
+				
+				child.Icon:ClearAllPoints()
+				child.Icon:SetPoint("CENTER", child, "CENTER", 0, 0)
+				child.Icon:SetSize(child:GetWidth() * (viewer.iconScale or 1), child:GetHeight() * (viewer.iconScale or 1))
+				
+				if useBorders then
+					local adjustedIconAlpha = math.max(0, iconAlpha - 0.2)
+					child.Icon:SetAlpha(adjustedIconAlpha)
+				else
+					child.Icon:SetAlpha(iconAlpha)
+				end
+			end
+
+			if useBorders then
+				if not child.border then
+					child.border = child:CreateTexture(nil, "BACKGROUND")
+					child.border:SetColorTexture(0, 0, 0, child.originalIconAlpha or 1)
+					child.border:SetAllPoints(child)
+				else
+					child.border:SetAlpha(child.originalIconAlpha or 1)
+				end
+				child.border:Show()
+
+				if not child.borderInset then
+					child.borderInset = child:CreateTexture(nil, "BACKGROUND")
+					child.borderInset:SetColorTexture(0, 0, 0, child.originalIconAlpha or 1)
+					child.borderInset:SetPoint("TOPLEFT", child, "TOPLEFT", 1, -1)
+					child.borderInset:SetPoint("BOTTOMRIGHT", child, "BOTTOMRIGHT", -1, 1)
+				else
+					child.borderInset:SetAlpha(child.originalIconAlpha or 1)
+				end
+				child.borderInset:Show()
+			else
+				if child.border then child.border:Hide() end
+				if child.borderInset then child.borderInset:Hide() end
+			end
+		end
+		return
+	end
+	
     -- Get layout settings from the viewer
     local stride = viewer.stride or #visibleChildren
+	print("About to reposition", viewer:GetName(), "with", #visibleChildren, "icons")
 
 	-- CONFIGURATION OPTIONS:
 	local overlap = useBorders and 0 or -3 -- No overlap when using borders
@@ -157,9 +263,13 @@ local function RemovePadding(viewer)
 
 	-- Scale the icons and preserve actual alpha
 	for _, child in ipairs(visibleChildren) do
-		local iconAlpha = (child.Icon and child.Icon:GetAlpha()) or 1
-
 		if child.Icon then
+			-- Store original alpha if not already stored
+			if not child.originalIconAlpha then
+				child.originalIconAlpha = child.Icon:GetAlpha()
+			end
+			local iconAlpha = child.originalIconAlpha
+			
 			child.Icon:ClearAllPoints()
 			child.Icon:SetPoint("CENTER", child, "CENTER", 0, 0)
 			child.Icon:SetSize(child:GetWidth() * (viewer.iconScale or 1), child:GetHeight() * (viewer.iconScale or 1))
@@ -198,7 +308,7 @@ local function RemovePadding(viewer)
 		end
 	end
 
-    -- Reposition buttons respecting orientation and stride
+    -- Reposition icons respecting orientation and stride
     local buttonWidth = visibleChildren[1]:GetWidth()
     local buttonHeight = visibleChildren[1]:GetHeight()
     
