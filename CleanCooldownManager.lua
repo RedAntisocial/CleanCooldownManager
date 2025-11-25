@@ -15,8 +15,7 @@ local viewerSettings = {
     EssentialCooldownViewer = true,
     BuffIconCooldownViewer = true
     }
-
-
+    
 local addon = CreateFrame("Frame")
 addon:RegisterEvent("ADDON_LOADED")
 addon:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -255,7 +254,8 @@ local function RemovePadding(viewer)
 	
     -- Get layout settings from the viewer
     local stride = viewer.stride or #visibleChildren
-	print("About to reposition", viewer:GetName(), "with", #visibleChildren, "icons")
+	-- debug
+	-- print("About to reposition", viewer:GetName(), "with", #visibleChildren, "icons")
 
 	-- CONFIGURATION OPTIONS:
 	local overlap = useBorders and 0 or -3 -- No overlap when using borders
