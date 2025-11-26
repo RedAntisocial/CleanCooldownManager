@@ -1,14 +1,10 @@
 -- CleanCooldownManager.lua
 -- SavedVariables
 CleanCooldownManagerDB = CleanCooldownManagerDB or {}
--- CleanCooldownManager.lua
--- SavedVariables
-CleanCooldownManagerDB = CleanCooldownManagerDB or {}
 
 -- Local variables
 local useBorders = false
 local centerBuffs = true
-local iconAlpha
 local viewerSettings = {
     UtilityCooldownViewer = true,
     EssentialCooldownViewer = true,
@@ -95,7 +91,6 @@ local function RemovePadding(viewer)
 				if not child.originalIconAlpha then
 					child.originalIconAlpha = child.Icon:GetAlpha()
 				end
-				iconAlpha = child.originalIconAlpha
 				
 				-- Scale the entire button frame
 				local scale = viewer.iconScale or 1
@@ -105,31 +100,30 @@ local function RemovePadding(viewer)
 				child.Icon:SetPoint("CENTER", child, "CENTER", 0, 0)
 				
 				if useBorders then
-					local adjustedIconAlpha = math.max(0, iconAlpha - 0.2)
+					local adjustedIconAlpha = math.max(0, (child.originalIconAlpha or 1) - 0.2)
 					child.Icon:SetAlpha(adjustedIconAlpha)
 				else
-					child.Icon:SetAlpha(iconAlpha)
+					child.Icon:SetAlpha(child.originalIconAlpha or 1)
 				end
 			end
 
             if useBorders then
-                local borderAlpha = iconAlpha
                 if not child.border then
                     child.border = child:CreateTexture(nil, "BACKGROUND")
-                    child.border:SetColorTexture(0, 0, 0, iconAlpha)
+                    child.border:SetColorTexture(0, 0, 0, child.originalIconAlpha or 1)
                     child.border:SetAllPoints(child)
                 else
-                    child.border:SetAlpha(iconAlpha)
+                    child.border:SetAlpha(child.originalIconAlpha or 1)
                 end
                 child.border:Show()
 
                 if not child.borderInset then
                     child.borderInset = child:CreateTexture(nil, "BACKGROUND")
-                    child.borderInset:SetColorTexture(0, 0, 0, iconAlpha)
+                    child.borderInset:SetColorTexture(0, 0, 0, child.originalIconAlpha or 1)
                     child.borderInset:SetPoint("TOPLEFT", child, "TOPLEFT", 1, -1)
                     child.borderInset:SetPoint("BOTTOMRIGHT", child, "BOTTOMRIGHT", -1, 1)
                 else
-                    child.borderInset:SetAlpha(iconAlpha)
+                    child.borderInset:SetAlpha(child.originalIconAlpha or 1)
                 end
                 child.borderInset:Show()
             else
@@ -213,20 +207,17 @@ local function RemovePadding(viewer)
 				if not child.originalIconAlpha then
 					child.originalIconAlpha = child.Icon:GetAlpha()
 				end
-				iconAlpha = child.originalIconAlpha
 				
 				child.Icon:ClearAllPoints()
 				child.Icon:SetPoint("CENTER", child, "CENTER", 0, 0)
 				child.Icon:SetSize(child:GetWidth() * (viewer.iconScale or 1), child:GetHeight() * (viewer.iconScale or 1))
 				
 				if useBorders then
-					local adjustedIconAlpha = math.max(0, iconAlpha - 0.2)
+					local adjustedIconAlpha = math.max(0, (child.originalIconAlpha or 1) - 0.2)
 					child.Icon:SetAlpha(adjustedIconAlpha)
 				else
-					child.Icon:SetAlpha(iconAlpha)
+					child.Icon:SetAlpha(child.originalIconAlpha or 1)
 				end
-			else
-				iconAlpha = 1
 			end
 
 			if useBorders then
@@ -272,7 +263,6 @@ local function RemovePadding(viewer)
 			if not child.originalIconAlpha then
 				child.originalIconAlpha = child.Icon:GetAlpha()
 			end
-			iconAlpha = child.originalIconAlpha
 			
 			-- Scale the entire button frame
 			local scale = viewer.iconScale or 1
@@ -282,33 +272,30 @@ local function RemovePadding(viewer)
 			child.Icon:SetPoint("CENTER", child, "CENTER", 0, 0)
 			
 			if useBorders then
-				local adjustedIconAlpha = math.max(0, iconAlpha - 0.2)
+				local adjustedIconAlpha = math.max(0, (child.originalIconAlpha or 1) - 0.2)
 				child.Icon:SetAlpha(adjustedIconAlpha)
 			else
-				child.Icon:SetAlpha(iconAlpha)
+				child.Icon:SetAlpha(child.originalIconAlpha or 1)
 			end
-		else
-			iconAlpha = 1
 		end
 
 		if useBorders then
-			local borderAlpha = iconAlpha
 			if not child.border then
 				child.border = child:CreateTexture(nil, "BACKGROUND")
-				child.border:SetColorTexture(0, 0, 0, iconAlpha)
+				child.border:SetColorTexture(0, 0, 0, child.originalIconAlpha or 1)
 				child.border:SetAllPoints(child)
 			else
-				child.border:SetAlpha(iconAlpha)
+				child.border:SetAlpha(child.originalIconAlpha or 1)
 			end
 			child.border:Show()
 
 			if not child.borderInset then
 				child.borderInset = child:CreateTexture(nil, "BACKGROUND")
-				child.borderInset:SetColorTexture(0, 0, 0, iconAlpha)
+				child.borderInset:SetColorTexture(0, 0, 0, child.originalIconAlpha or 1)
 				child.borderInset:SetPoint("TOPLEFT", child, "TOPLEFT", 1, -1)
 				child.borderInset:SetPoint("BOTTOMRIGHT", child, "BOTTOMRIGHT", -1, 1)
 			else
-				child.borderInset:SetAlpha(iconAlpha)
+				child.borderInset:SetAlpha(child.originalIconAlpha or 1)
 			end
 			child.borderInset:Show()
 		else
@@ -619,7 +606,6 @@ OptionsPanel:AddCheckbox(panel, {
     onClick = function(val)
         useBorders = val
         SaveSettings()
-		LoadSettings()
         ApplyModifications()
     end,
     point = "TOPLEFT",
