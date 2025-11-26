@@ -8,7 +8,6 @@ CleanCooldownManagerDB = CleanCooldownManagerDB or {}
 -- Local variables
 local useBorders = false
 local centerBuffs = true
-local borderAlpha
 local iconAlpha
 local viewerSettings = {
     UtilityCooldownViewer = true,
@@ -89,7 +88,7 @@ local function RemovePadding(viewer)
     
     -- Skip repositioning for BuffIconCooldownViewer if centering is disabled
     if viewer == _G.BuffIconCooldownViewer and not centerBuffs then
-        -- Still apply scaling and borders
+		-- Still apply scaling and borders
         for _, child in ipairs(visibleChildren) do
             if child.Icon then
 				-- Store original alpha if not already stored
@@ -98,9 +97,12 @@ local function RemovePadding(viewer)
 				end
 				iconAlpha = child.originalIconAlpha
 				
+				-- Scale the entire button frame
+				local scale = viewer.iconScale or 1
+				child:SetScale(scale)
+
 				child.Icon:ClearAllPoints()
 				child.Icon:SetPoint("CENTER", child, "CENTER", 0, 0)
-				child.Icon:SetSize(child:GetWidth() * (viewer.iconScale or 1), child:GetHeight() * (viewer.iconScale or 1))
 				
 				if useBorders then
 					local adjustedIconAlpha = math.max(0, iconAlpha - 0.2)
@@ -111,7 +113,7 @@ local function RemovePadding(viewer)
 			end
 
             if useBorders then
-                borderAlpha = iconAlpha
+                local borderAlpha = iconAlpha
                 if not child.border then
                     child.border = child:CreateTexture(nil, "BACKGROUND")
                     child.border:SetColorTexture(0, 0, 0, iconAlpha)
@@ -211,7 +213,7 @@ local function RemovePadding(viewer)
 				if not child.originalIconAlpha then
 					child.originalIconAlpha = child.Icon:GetAlpha()
 				end
-				local iconAlpha = child.originalIconAlpha
+				iconAlpha = child.originalIconAlpha
 				
 				child.Icon:ClearAllPoints()
 				child.Icon:SetPoint("CENTER", child, "CENTER", 0, 0)
@@ -223,6 +225,8 @@ local function RemovePadding(viewer)
 				else
 					child.Icon:SetAlpha(iconAlpha)
 				end
+			else
+				iconAlpha = 1
 			end
 
 			if useBorders then
@@ -268,11 +272,14 @@ local function RemovePadding(viewer)
 			if not child.originalIconAlpha then
 				child.originalIconAlpha = child.Icon:GetAlpha()
 			end
-			local iconAlpha = child.originalIconAlpha
+			iconAlpha = child.originalIconAlpha
 			
+			-- Scale the entire button frame
+			local scale = viewer.iconScale or 1
+			child:SetScale(scale)
+
 			child.Icon:ClearAllPoints()
 			child.Icon:SetPoint("CENTER", child, "CENTER", 0, 0)
-			child.Icon:SetSize(child:GetWidth() * (viewer.iconScale or 1), child:GetHeight() * (viewer.iconScale or 1))
 			
 			if useBorders then
 				local adjustedIconAlpha = math.max(0, iconAlpha - 0.2)
@@ -280,6 +287,8 @@ local function RemovePadding(viewer)
 			else
 				child.Icon:SetAlpha(iconAlpha)
 			end
+		else
+			iconAlpha = 1
 		end
 
 		if useBorders then
@@ -349,7 +358,7 @@ local function RemovePadding(viewer)
 
             -- Center this row
             local rowStartX = -rowWidth / 2
-
+			
             -- Column offset inside centered row
             local xOffset = rowStartX + col * (buttonWidth + overlap)
             local yOffset = startY - row * (buttonHeight + overlap)
