@@ -99,7 +99,7 @@ local function RemovePadding(viewer)
 				
 				-- Scale the entire button frame
 				local scale = viewer.iconScale or 1
-				child:SetScale(scale)
+				child.Icon:SetSize(child:GetWidth() * scale, child:GetHeight() * scale)
 
 				child.Icon:ClearAllPoints()
 				child.Icon:SetPoint("CENTER", child, "CENTER", 0, 0)
@@ -276,7 +276,7 @@ local function RemovePadding(viewer)
 			
 			-- Scale the entire button frame
 			local scale = viewer.iconScale or 1
-			child:SetScale(scale)
+			child.Icon:SetSize(child:GetWidth() * scale, child:GetHeight() * scale)
 
 			child.Icon:ClearAllPoints()
 			child.Icon:SetPoint("CENTER", child, "CENTER", 0, 0)
