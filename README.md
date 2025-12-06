@@ -8,7 +8,7 @@ A simple & minimalist add-on for World of Warcraft that tweaks the look of Blizz
 
 ## About
 
-CleanCooldownManager focusses purely on aesthetics and cleanliness of the built-in cooldown UI. It does **not** add new features, change gameplay, or alter configuration options.  
+CleanCooldownManager focuses purely on aesthetics and cleanliness of the built-in cooldown UI. It does **not** add new features, change gameplay, or alter configuration options.  
 It simply refines the look of the existing cooldown manager.
 
 ## Installation
