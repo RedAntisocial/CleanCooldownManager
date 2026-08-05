@@ -1,4 +1,4 @@
-## Interface: 120005, 120007
+## Interface: 120007, 120100
 ## Title: Clean Cooldown Manager
 ## Notes: Just some tweaks to clean up the Blizzard Cooldown Manager look and feel until they do them.
 ## Author: Periago - Dalaran
